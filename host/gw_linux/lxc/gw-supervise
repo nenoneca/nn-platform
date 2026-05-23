@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: Apache-2.0
+#
+# gw-supervise — picks the right gw_linux subcommand based on whether
+# the container has a complete provisioning blob.  Used as ExecStart by
+# the nn-gw.service systemd unit so a single Restart=always loop covers
+# both the unprovisioned (advertising on TCP+mDNS) and the post-
+# provisioning (Thread mesh + proto_tcp to hub) phases.
+
+set -u
+STATE="${STATE_DIR:-/root/.local/state/nn-gw}/kv/gw_provision"
+UART="${NCP_UART:-/dev/ttyAMA3}"
+
+# Six files = full set written by gw_provision_set.
+need=(ssid psk hub_mdns hub_id hub_pub ot_dataset)
+complete=1
+for f in "${need[@]}"; do
+    [[ -s "${STATE}/${f}" ]] || { complete=0; break; }
+done
+
+if [[ "${complete}" == "1" ]]; then
+    echo "[supervise] provisioning complete → operate ${UART}"
+    exec /usr/local/bin/gw_linux operate "${UART}"
+fi
+echo "[supervise] not yet provisioned → provision-net --no-mdns"
+exec /usr/local/bin/gw_linux provision-net --no-mdns

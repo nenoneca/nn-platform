@@ -1,0 +1,8 @@
+# nn-platform .gitignore
+out/
+build/
+*.pyc
+__pycache__/
+.DS_Store
+
+build-aarch64/
